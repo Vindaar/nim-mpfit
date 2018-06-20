@@ -1,3 +1,7 @@
+# mpfit_nim
+# Copyright Sebastian Schmidt
+# Wrapper for the cMPFIT non-linear least squares fitting library (Levenberg-Marquardt)
+
 import strformat
 import sequtils
 import wrapper/mpfit_wrapper
@@ -20,15 +24,16 @@ type
 
 proc `$`(v: varStruct): string = $v[]
             
-proc echoResult*(x, xact: openArray[float], res: mp_result) =
+proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_result) =
   let errs = cast[ptr UncheckedArray[cdouble]](res.xerror)
-  
-  echo &"  CHI-SQUARE = {res.bestnorm}    ({res.nfunc - res.nfree} DOF)"
-  echo &"        NPAR = {res.npar}"
-  echo &"       NFREE = {res.nfree}"
-  echo &"     NPEGGED = {res.npegged}"
-  echo &"     NITER = {res.niter}"
-  echo &"      NFEV = {res.nfev}"
+  let chisq_red = res.bestnorm.float / (res.nfunc - res.nfree).float
+  echo &"  CHI-SQUARE =     {res.bestnorm}    ({res.nfunc - res.nfree} DOF)"
+  echo &"  CHI_SQUARE/dof = {chisq_red}"
+  echo &"        NPAR =     {res.npar}"
+  echo &"       NFREE =     {res.nfree}"
+  echo &"     NPEGGED =     {res.npegged}"
+  echo &"     NITER   =     {res.niter}"
+  echo &"      NFEV   =     {res.nfev}"
   if xact.len != 0:
     for i in 0 ..< res.npar:
       echo &"  P[{i}] = {x[i]} +/- {errs[i]}     (ACTUAL {xact[i]})"
@@ -36,12 +41,6 @@ proc echoResult*(x, xact: openArray[float], res: mp_result) =
     for i in 0 ..< res.npar:
       echo &"  P[{i}] = {x[i]} +/- {errs[i]}"
     
-proc ffunc[T](p: seq[T], x: T): T =
-  result = p[0] + p[1] * x
-
-proc fsquare[T](p: seq[T], x: T): T =
-  result =  p[0] + p[1] * x + p[2] * x * x
-
 proc linfunc(m, n: cint, pPtr: ptr cdouble, dyPtr: ptr cdouble, dvecPtr: ptr ptr cdouble, vars: var pointer): cint {.cdecl.} =
   var
     v = cast[varStruct[float]](vars)
@@ -61,11 +60,12 @@ proc linfunc(m, n: cint, pPtr: ptr cdouble, dyPtr: ptr cdouble, dvecPtr: ptr ptr
     f = ff(pCall, x[i])
     dy[i] = (y[i] - f) / ey[i]
   
-proc fit*[T](f: FuncProto[T], pS: seq[T], x, y, ey: seq[T]): (seq[T], mp_result) =
+proc fit*[T](f: FuncProto[T], pS: openArray[T], x, y, ey: openArray[T]): (seq[T], mp_result) =
+  
   var
-    vars = varStruct[float](x: x, y: y, ey: ey, f: f)
+    vars = varStruct[float](x: @x, y: @y, ey: @ey, f: f)
     res: mp_result
-    p = pS
+    p = @pS
     m = x.len.cint
     n = pS.len.cint
     perror = newSeq[float](n)
@@ -77,6 +77,15 @@ proc fit*[T](f: FuncProto[T], pS: seq[T], x, y, ey: seq[T]): (seq[T], mp_result)
   let status = mpfit(f, m, n, p[0].addr, nil, nil, cast[pointer](addr(vars)), addr(res))
   echo &"*** testlinfit status = {status}"
   result = (p, res)
+
+  
+# the following define a few tests, taken from the tests of the C library
+
+proc ffunc[T](p: seq[T], x: T): T =
+  result = p[0] + p[1] * x
+
+proc fsquare[T](p: seq[T], x: T): T =
+  result =  p[0] + p[1] * x + p[2] * x * x
 
 proc testlinfit() =
   let
