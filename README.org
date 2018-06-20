@@ -1,2 +1,171 @@
 * nimMPFIT
- Wrapper of the cMPFIT library (insert link) for Nim.
+ Wrapper of the [[https://www.physics.wisc.edu/~craigm/idl/cmpfit.html][cMPFIT library]] for Nim.
+
+** Example
+
+The following example shows the basic usage of the library. Note that
+the actual code related to mpfit-nim is only the definition of =proc
+expH(...)= and =proc fitHalfLife(...)=.  
+
+In addition an =echoResult= proc is defined, which can be used to
+pretty print the result of the fit.
+TODO: provide nicer access to the errors of the fit parameters and the
+chi^2 value.
+
+#+BEGIN_SRC nim
+import strutils
+import seqmath
+import sequtils
+import strformat
+import plotly
+import ../src/mpfit_nim
+import zero_functional
+import chroma
+
+const
+  n = 1000
+  filename = "data/half_life_muon.txt"
+
+proc expH(p: seq[float], x: float): float =
+  ## the function we'd like to fit. Any user defined function needs to
+  ## be of the signature
+  ## proc[T](p: seq[T], x: T): T
+  ## i.e. conform to the FuncProto[T] type defined in mpfit_nim
+  result = p[0] * exp(-p[1] * x)
+  
+proc parseHalfLifeData(filename: string): (seq[float], seq[float]) =
+  ## Parse the input file. First create seq of tuple of floats
+  ## then convert that to tuple of seq[float]
+  let s = readFile(filename).splitLines --> filter('#' notin it and it.len > 0).
+                                             map(it.splitWhitespace).
+                                             map((it[0].parseFloat,
+                                                  it[1].parseFloat))
+  result[0] = s --> map(it[0])
+  result[1] = s --> map(it[1])  
+                                            
+proc fitHalfLife(bins, counts, countsErr: seq[float]): (seq[float], mp_result) =
+  ## the actual code which performs the fitting. Call the `fit` proc
+  ## with the user defined function to be fitted as the first argument,
+  ## the initial parameter guess as the second and finally x, y and y_err
+  # start parameters
+  let p = [1400.0, 1.0]
+  # now just call fit
+  let (pRes, res) = fit(expH, p, bins, counts, countsErr)
+  echoResult(pRes, res = res)
+  result = (pRes, res)
+  echo &"The lifetime of the muon is ~ {1.0 / pRes[1]:.2f} µs"
+                                            
+proc plot(bins, counts, countsErr, xFit, yFit: seq[float]) =
+  ## plot the data using plotly. The first plot is an ErrorBar plot
+  ## the second a lines plot
+  
+  let d = Trace[float](mode: PlotMode.Markers, `type`: PlotType.ScatterGL,
+                       xs: bins, ys: counts, name: "Muon lifetime measurement")
+  d.marker = Marker[float](size: @[3.0])
+  # add error bars for counts
+  d.ys_err = newErrorBar(countsErr, color = Color(r: 0.5, g: 0.5, b: 0.5, a: 1.0))
+
+  let dFit = Trace[float](mode: PlotMode.Lines, `type`: PlotType.ScatterGL,
+                         xs: xFit, ys: yFit, name: "Fit to lifetime data")
+  
+  let layout = Layout(title: "Muon half life measurement", width: 1200, height: 800,
+                      xaxis: Axis(title: "time / µs"),
+                      yaxis: Axis(title: "# counts"), autosize: false)
+  Plot[float](layout: layout, traces: @[d, dFit]).show()
+
+when isMainModule:
+  # first parse the data from the file
+  let (bins, counts) = parseHalfLifeData(filename)
+  # calculates errors: poisson errors on the counts
+  let countsErr = counts.mapIt(sqrt(it))
+  # perform the fit and echo results
+  let (pRes, res) = fitHalfLife(bins, counts, countsErr)
+
+  # calculate some datapoints for the plot of the fit
+  let
+    xFit = linspace(0, 10, 1000)
+    # call fitted function for each value with final parameters
+    yFit = xFit.mapIt(expH(pRes, it))
+
+  # plot the data and the fit
+  plot(bins, counts, countsErr, xFit, yFit)
+#+END_SRC
+
+which outputs the following:
+#+BEGIN_SRC sh
+ *** testlinfit status = 1
+  CHI-SQUARE     = 74.07991136435545    (8 DOF)
+  CHI_SQUARE/dof = 9.259988920544432
+        NPAR     = 2
+       NFREE     = 2
+     NPEGGED     = 0
+     NITER       = 11
+      NFEV       = 33
+  P[0] = 1937.0984494501 +/- 45.63271325094058
+  P[1] = 0.5155077785010372 +/- 0.008761055877357529
+The lifetime of the muon is ~ 1.94 µs
+#+END_SRC
+
+and creates this plot:
+[[file:media/muon_lifetime_measurement.png]]
+
+** Dependencies & Installation
+
+The library depends on the cMPFIT library as a shared object. Either
+get the source code from [[https://www.physics.wisc.edu/~craigm/idl/cmpfit.html][here]] or use the code in [[file:c_src/]].
+Compile the C library as follows:
+#+BEGIN_SRC sh
+gcc -c -Wall -Werror -fpic mpfit.c mpfit.h
+gcc -shared -o libmpfit.so mpfit.o
+#+END_SRC
+which should create a =libmpfit.so= file in the same directory. The
+Nim library will link against it. Either copy the shared library to
+the location of your Nim code, in which you use mpfit-nim, or install
+it system wide, depending on your system it may look like the
+following (Ubuntu x64):
+#+BEGIN_SRC 
+cp libmpfit.so /usr/lib/x86_64-linux-gnu
+#+END_SRC
+
+Once the shared library is available, there shouldn't be anything else
+to do to use the library. Note: the example given in
+[[file:examples/fit_half_life.nim]] requires a few Nim libraries, which
+are not dependencies, since they are only used in the example,
+notably:
+- =seqmath= (for linspace)
+- =plotly= (+ =chroma=) (to plot the data and fit)
+- =zero_functional= (to parse the data)
+
+** Usage
+The library consists of a single exported `fit` procedure, which has
+the following signature:
+#+BEGIN_SRC nim
+proc fit*[T](f: FuncProto[T], pS: openArray[T], x, y, ey: openArray[T]): (seq[T], mp_result) =
+#+END_SRC
+the first argument is a user defined function (see below), the
+following arguments are:
+- =pS=: the first guess for the parameters
+- =x=: data for x 
+- =y=: data for y 
+- =ey=: errors for y
+Note: currently the =ey= may not be an empty sequence, nor 0, since we
+use it as a weight. (TODO: change that!)
+
+The =mp_result= object contains the chi^2 values for the fit, the
+errors on the parameters and additional information about the internal
+fitting process (e.g. number of times the user defined function was
+called).
+The type is defined in [[file:src/wrapper/mpfit_wrapper.nim]].
+
+
+The =FuncProto[T]= type is the following:
+#+BEGIN_SRC nim
+proc [T](p: seq[T], x: T): T
+#+END_SRC
+defined in [[file:src/mpfit_nim.nim]]. 
+The user defined function needs to conform to that (see the example above).
+
+** License
+The C code is governed by the licence as shown in
+[[file:c_src/DISCLAIMER]]. The Nim code is published under the MIT license.
+
