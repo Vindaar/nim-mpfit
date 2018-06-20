@@ -107,7 +107,7 @@ The lifetime of the muon is ~ 1.94 µs
 #+END_SRC
 
 and creates this plot:
-[[file:media/muon_lifetime_measurement.png]]
+[[file:media/muon_lifetime_measurement.jpg]]
 
 ** Dependencies & Installation
 
