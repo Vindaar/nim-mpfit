@@ -1,10 +1,10 @@
-# mpfit_nim
+# mpfit
 # Copyright Sebastian Schmidt
 # Wrapper for the cMPFIT non-linear least squares fitting library (Levenberg-Marquardt)
 
 import strformat
 import sequtils
-import wrapper/mpfit_wrapper
+import mpfit/mpfit_wrapper
 export mpfit_wrapper
 import macros
 
@@ -61,7 +61,7 @@ func linfunc(m, n: cint, pPtr: ptr cdouble, dyPtr: ptr cdouble, dvecPtr: ptr ptr
     dy[i] = (y[i] - f) / ey[i]
   
 proc fit*[T](f: FuncProto[T], pS: openArray[T], x, y, ey: openArray[T]): (seq[T], mp_result) =
-  
+  ## The actual `fit` procedure, which needs to be called by the user.
   var
     vars = varStruct[float](x: @x, y: @y, ey: @ey, f: f)
     res: mp_result
@@ -72,7 +72,6 @@ proc fit*[T](f: FuncProto[T], pS: openArray[T], x, y, ey: openArray[T]): (seq[T]
 
   res.xerror = perror[0].addr
   var f = cast[mp_func](linfunc)
-  echo vars
   
   let status = mpfit(f, m, n, p[0].addr, nil, nil, cast[pointer](addr(vars)), addr(res))
   echo &"*** testlinfit status = {status}"
@@ -80,7 +79,6 @@ proc fit*[T](f: FuncProto[T], pS: openArray[T], x, y, ey: openArray[T]): (seq[T]
 
   
 # the following define a few tests, taken from the tests of the C library
-
 func ffunc[T](p: seq[T], x: T): T =
   result = p[0] + p[1] * x
 

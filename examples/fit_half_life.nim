@@ -3,7 +3,7 @@ import seqmath
 import sequtils
 import strformat
 import plotly
-import ../src/mpfit_nim
+import ../src/mpfit
 import zero_functional
 import chroma
 
