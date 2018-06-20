@@ -11,7 +11,7 @@ const
   n = 1000
   filename = "data/half_life_muon.txt"
 
-proc expH(p: seq[float], x: float): float =
+func expH(p: seq[float], x: float): float =
   ## the function we'd like to fit. Any user defined function needs to
   ## be of the signature
   ## proc[T](p: seq[T], x: T): T

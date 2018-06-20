@@ -41,7 +41,7 @@ proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_resu
     for i in 0 ..< res.npar:
       echo &"  P[{i}] = {x[i]} +/- {errs[i]}"
     
-proc linfunc(m, n: cint, pPtr: ptr cdouble, dyPtr: ptr cdouble, dvecPtr: ptr ptr cdouble, vars: var pointer): cint {.cdecl.} =
+func linfunc(m, n: cint, pPtr: ptr cdouble, dyPtr: ptr cdouble, dvecPtr: ptr ptr cdouble, vars: var pointer): cint {.cdecl.} =
   var
     v = cast[varStruct[float]](vars)
     p = cast[ptr UncheckedArray[cdouble]](pPtr)
@@ -81,10 +81,10 @@ proc fit*[T](f: FuncProto[T], pS: openArray[T], x, y, ey: openArray[T]): (seq[T]
   
 # the following define a few tests, taken from the tests of the C library
 
-proc ffunc[T](p: seq[T], x: T): T =
+func ffunc[T](p: seq[T], x: T): T =
   result = p[0] + p[1] * x
 
-proc fsquare[T](p: seq[T], x: T): T =
+func fsquare[T](p: seq[T], x: T): T =
   result =  p[0] + p[1] * x + p[2] * x * x
 
 proc testlinfit() =
