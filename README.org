@@ -137,7 +137,7 @@ notably:
 - =zero_functional= (to parse the data)
 
 ** Usage
-The library consists of a single exported `fit` procedure, which has
+The library consists of a single exported =fit= procedure, which has
 the following signature:
 #+BEGIN_SRC nim
 proc fit*[T](f: FuncProto[T], pS: openArray[T], x, y, ey: openArray[T]): (seq[T], mp_result) =
