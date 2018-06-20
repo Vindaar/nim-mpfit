@@ -27,13 +27,13 @@ proc `$`(v: varStruct): string = $v[]
 proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_result) =
   let errs = cast[ptr UncheckedArray[cdouble]](res.xerror)
   let chisq_red = res.bestnorm.float / (res.nfunc - res.nfree).float
-  echo &"  CHI-SQUARE =     {res.bestnorm}    ({res.nfunc - res.nfree} DOF)"
+  echo &"  CHI-SQUARE     = {res.bestnorm}    ({res.nfunc - res.nfree} DOF)"
   echo &"  CHI_SQUARE/dof = {chisq_red}"
-  echo &"        NPAR =     {res.npar}"
-  echo &"       NFREE =     {res.nfree}"
-  echo &"     NPEGGED =     {res.npegged}"
-  echo &"     NITER   =     {res.niter}"
-  echo &"      NFEV   =     {res.nfev}"
+  echo &"        NPAR     = {res.npar}"
+  echo &"       NFREE     = {res.nfree}"
+  echo &"     NPEGGED     = {res.npegged}"
+  echo &"     NITER       = {res.niter}"
+  echo &"      NFEV       = {res.nfev}"
   if xact.len != 0:
     for i in 0 ..< res.npar:
       echo &"  P[{i}] = {x[i]} +/- {errs[i]}     (ACTUAL {xact[i]})"
