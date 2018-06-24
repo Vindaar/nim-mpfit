@@ -23,11 +23,37 @@ type
                        
 
 proc `$`(v: varStruct): string = $v[]
-            
-proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_result) =
+
+func error*(res: mp_result): seq[float] =
+  ## given an `mp_result`, return the errors of the fit parameters
   let errs = cast[ptr UncheckedArray[cdouble]](res.xerror)
-  let chisq_red = res.bestnorm.float / (res.nfunc - res.nfree).float
-  echo &"  CHI-SQUARE     = {res.bestnorm}    ({res.nfunc - res.nfree} DOF)"
+  result = newSeq[float](res.npar)
+  for i in 0 .. result.high:
+    result[i] = errs[i].float
+
+func cov*(res: mp_result): seq[seq[float]] =
+  ## given an `mp_result`, return the covariance matrix of the fit parameters
+  ## as a nested seq of shape `[npar, npar]`
+  let npar = res.npar.int
+  let covar = cast[ptr UncheckedArray[cdouble]](res.covar)
+  result = newSeqWith(npar, newSeq[float](npar))
+  for i in 0 ..< npar:
+    for j in 0 ..< npar:
+      result[i][j] = covar[i * npar + j].float
+
+func chiSq*(res: mp_result): float =
+  ## given an `mp_result`, return the chi^2 of the fit
+  result = res.bestnorm.float
+
+func reducedChiSq*(res: mp_result): float =
+  ## given an `mp_result`, return the reduced chi^2 of the fit, i.e.
+  ## reducedChisq = chi^2 / d.o.f. = chi^2 / (# data points - # parameters)
+  result = res.chisq / (res.nfunc - res.nfree).float
+  
+proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_result) =
+  let errs = res.error
+  let chisq_red = res.reducedChisq
+  echo &"  CHI-SQUARE     = {res.chiSq}    ({res.nfunc - res.nfree} DOF)"
   echo &"  CHI_SQUARE/dof = {chisq_red}"
   echo &"        NPAR     = {res.npar}"
   echo &"       NFREE     = {res.nfree}"
@@ -40,7 +66,7 @@ proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_resu
   else:
     for i in 0 ..< res.npar:
       echo &"  P[{i}] = {x[i]} +/- {errs[i]}"
-    
+
 func linfunc(m, n: cint, pPtr: ptr cdouble, dyPtr: ptr cdouble, dvecPtr: ptr ptr cdouble, vars: var pointer): cint {.cdecl.} =
   var
     v = cast[varStruct[float]](vars)
