@@ -67,7 +67,10 @@ proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_resu
     for i in 0 ..< res.npar:
       echo &"  P[{i}] = {x[i]} +/- {errs[i]}"
 
-func linfunc(m, n: cint, pPtr: ptr cdouble, dyPtr: ptr cdouble, dvecPtr: ptr ptr cdouble, vars: var pointer): cint {.cdecl.} =
+func linfunc(m, n: cint,
+             pPtr, dyPtr: ptr cdouble,
+             dvecPtr: ptr ptr cdouble,
+             vars: var pointer): cint {.cdecl.} =
   var
     v = cast[varStruct[float]](vars)
     p = cast[ptr UncheckedArray[cdouble]](pPtr)
@@ -86,7 +89,10 @@ func linfunc(m, n: cint, pPtr: ptr cdouble, dyPtr: ptr cdouble, dvecPtr: ptr ptr
     f = ff(pCall, x[i])
     dy[i] = (y[i] - f) / ey[i]
   
-proc fit*[T](f: FuncProto[T], pS: openArray[T], x, y, ey: openArray[T]): (seq[T], mp_result) =
+proc fit*[T](f: FuncProto[T],
+             pS: openArray[T],
+             x, y, ey: openArray[T],
+             bounds: seq[mp_par] = @[]): (seq[T], mp_result) =
   ## The actual `fit` procedure, which needs to be called by the user.
   var
     vars = varStruct[float](x: @x, y: @y, ey: @ey, f: f)
@@ -95,11 +101,19 @@ proc fit*[T](f: FuncProto[T], pS: openArray[T], x, y, ey: openArray[T]): (seq[T]
     m = x.len.cint
     n = pS.len.cint
     perror = newSeq[float](n)
+    # variables for the bounds seq
+    mbounds = bounds
+    mboundsPtr: ptr mp_par = nil
+  if bounds.len > 0:
+    # in case bounds is non empty, use the address of that seq. Else we keep it
+    # as nil
+    doAssert bounds.len == n, "There needs to be one `mp_par` object for each parameter!"
+    mboundsPtr = mbounds[0].addr
 
   res.xerror = perror[0].addr
   var f = cast[mp_func](linfunc)
   
-  let status = mpfit(f, m, n, p[0].addr, nil, nil, cast[pointer](addr(vars)), addr(res))
+  let status = mpfit(f, m, n, p[0].addr, mboundsPtr, nil, cast[pointer](addr(vars)), addr(res))
   echo &"*** testlinfit status = {status}"
   result = (p, res)
 
