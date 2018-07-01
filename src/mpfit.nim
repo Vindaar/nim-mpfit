@@ -9,20 +9,15 @@ export mpfit_wrapper
 import macros
 
 type
-  #varStruct[N: static[int]] = object
-    # x: array[10, cdouble]
-    # y: array[10, cdouble]
-    # ey: array[10, cdouble]
-
   FuncProto[T] = proc (p: seq[T], x: T): T
-  varStruct[T] = ref object
+  VarStruct[T] = ref object
     x: seq[T]
     y: seq[T]
     ey: seq[T]
     f: FuncProto[T]
                        
 
-proc `$`(v: varStruct): string = $v[]
+proc `$`(v: VarStruct): string = $v[]
 
 func error*(res: mp_result): seq[float] =
   ## given an `mp_result`, return the errors of the fit parameters
@@ -67,12 +62,20 @@ proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_resu
     for i in 0 ..< res.npar:
       echo &"  P[{i}] = {x[i]} +/- {errs[i]}"
 
-func linfunc(m, n: cint,
+func funcImpl(m, n: cint,
              pPtr, dyPtr: ptr cdouble,
              dvecPtr: ptr ptr cdouble,
              vars: var pointer): cint {.cdecl.} =
+  ## this function contains the actual code, which is called by the C MPFIT
+  ## library. The `vars` argument contains the user data as well as the u
+  ## user defined fit function. This function only exists to accomodate
+  ## - taking into account errors on y (without the user having to do
+  ##   this in the custom fitting function)
+  ## - provide necessary arguments / types for CMPFIT
+  ## It runs over the x, y data and calls the user custom function for
+  ## each element, i.e. it wraps the user function
   var
-    v = cast[varStruct[float]](vars)
+    v = cast[VarStruct[float]](vars)
     p = cast[ptr UncheckedArray[cdouble]](pPtr)
     dy = cast[ptr UncheckedArray[cdouble]](dyPtr)
     x = v.x
@@ -89,13 +92,14 @@ func linfunc(m, n: cint,
     f = ff(pCall, x[i])
     dy[i] = (y[i] - f) / ey[i]
   
-proc fit*[T](f: FuncProto[T],
+proc fit*[T](userFunc: FuncProto[T],
              pS: openArray[T],
              x, y, ey: openArray[T],
              bounds: seq[mp_par] = @[]): (seq[T], mp_result) =
   ## The actual `fit` procedure, which needs to be called by the user.
   var
-    vars = varStruct[float](x: @x, y: @y, ey: @ey, f: f)
+    # create a VarStruct to hold the user data and custom function
+    vars = VarStruct[float](x: @x, y: @y, ey: @ey, f: userFunc)
     res: mp_result
     p = @pS
     m = x.len.cint
@@ -111,7 +115,9 @@ proc fit*[T](f: FuncProto[T],
     mboundsPtr = mbounds[0].addr
 
   res.xerror = perror[0].addr
-  var f = cast[mp_func](linfunc)
+  # cast the `funcImpl` function, which wraps the user function to the needed type
+  # for the C lib
+  var f = cast[mp_func](funcImpl)
   
   let status = mpfit(f, m, n, p[0].addr, mboundsPtr, nil, cast[pointer](addr(vars)), addr(res))
   echo &"*** testlinfit status = {status}"
