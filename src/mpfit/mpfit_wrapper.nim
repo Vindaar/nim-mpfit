@@ -1,19 +1,19 @@
-##  
+##
 ##  MINPACK-1 Least Squares Fitting Library
-## 
+##
 ##  Original public domain version by B. Garbow, K. Hillstrom, J. More'
 ##    (Argonne National Laboratory, MINPACK project, March 1980)
-##  
+##
 ##  Tranlation to C Language by S. Moshier (moshier.net)
-##  
+##
 ##  Enhancements and packaging by C. Markwardt
 ##    (comparable to IDL fitting routine MPFIT
 ##     see http://cow.physics.wisc.edu/~craigm/idl/idl.html)
-## 
+##
 ##  Header file defining constants, data structures and functions of
-##    mpfit library 
+##    mpfit library
 ##    $Id: mpfit.h,v 1.16 2016/06/02 19:14:16 craigm Exp $
-## 
+##
 
 ##  This is a C library.  Allow compilation with a C++ compiler
 
@@ -33,29 +33,29 @@ type
     parname*: cstring          ##  Name of parameter, or 0 for none
     step*: cdouble             ##  Step size for finite difference
     relstep*: cdouble          ##  Relative step size for finite difference
-    side*: cint ##  Sidedness of finite difference derivative 
+    side*: cint ##  Sidedness of finite difference derivative
               ## 		        0 - one-sided derivative computed automatically
               ## 		        1 - one-sided derivative (f(x+h) - f(x)  )/h
               ## 		       -1 - one-sided derivative (f(x)   - f(x-h))/h
-              ## 		        2 - two-sided derivative (f(x+h) - f(x-h))/(2*h) 
+              ## 		        2 - two-sided derivative (f(x+h) - f(x-h))/(2*h)
               ## 			3 - user-computed analytical derivatives
-              ## 
+              ##
     deriv_debug*: cint ##  Derivative debug mode: 1 = Yes; 0 = No;
-                     ## 
+                     ##
                      ##                        If yes, compute both analytical and numerical
                      ##                        derivatives and print them to the console for
                      ##                        comparison.
-                     ## 
+                     ##
                      ## 		       NOTE: when debugging, do *not* set side = 3,
                      ## 		       but rather to the kind of numerical derivative
                      ## 		       you want to compare the user-analytical one to
                      ## 		       (0, 1, -1, or 2).
-                     ## 
+                     ##
     deriv_reltol*: cdouble     ##  Relative tolerance for derivative debug
                          ## 			  printout
     deriv_abstol*: cdouble     ##  Absolute tolerance for derivative debug
                          ## 			  printout
-  
+
 
 ##  Just a placeholder - do not use!!
 
@@ -81,9 +81,9 @@ type
     maxiter*: cint ##  Maximum number of iterations.  If maxiter == MP_NO_ITER,
                  ##                      then basic error checking is done, and parameter
                  ##                      errors/covariances are estimated based on input
-                 ##                      parameter values, but no fitting iterations are done. 
+                 ##                      parameter values, but no fitting iterations are done.
                  ## 		     Default: 200
-                 ## 
+                 ##
     maxfev*: cint ##  Maximum number of function evaluations, or 0 for no limit
                 ## 		     Default: 0 (no limit)
     nprint*: cint              ##  Default: 1
@@ -92,10 +92,10 @@ type
                      ## 		     0 = no, variables scaled internally (Default)
     nofinitecheck*: cint       ##  Disable check for infinite quantities from user?
                        ## 			0 = do not perform check (Default)
-                       ## 			1 = perform check 
-                       ## 
+                       ## 			1 = perform check
+                       ##
     iterproc*: mp_iterproc     ##  Placeholder pointer - must set to 0
-  
+
 
 ##  Definition of results structure, for when fit completes
 
@@ -117,7 +117,7 @@ type
     covar*: ptr cdouble         ##  Final parameter covariance matrix
                      ## 			  npar x npar array, or 0 if not desired
     version*: array[20, char]   ##  MPFIT version string
-  
+
 
 ##  Convenience typedefs
 
@@ -170,7 +170,7 @@ const
   MP_DWARF* = 2.2250739e-308
   MP_GIANT* = 1.7976931e+308
 
-when 0:
+when sizeof(float) == 4:
   ##  Float precision
   const
     MP_MACHEP0* = 1.19209e-07
