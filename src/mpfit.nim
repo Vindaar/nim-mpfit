@@ -15,7 +15,7 @@ type
     y: seq[T]
     ey: seq[T]
     f: FuncProto[T]
-                       
+
 
 proc `$`(v: VarStruct): string = $v[]
 
@@ -44,7 +44,7 @@ func reducedChiSq*(res: mp_result): float =
   ## given an `mp_result`, return the reduced chi^2 of the fit, i.e.
   ## reducedChisq = chi^2 / d.o.f. = chi^2 / (# data points - # parameters)
   result = res.chisq / (res.nfunc - res.nfree).float
-  
+
 proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_result) =
   let errs = res.error
   let chisq_red = res.reducedChisq
@@ -91,12 +91,13 @@ func funcImpl(m, n: cint,
   for i in 0 ..< m:
     f = ff(pCall, x[i])
     dy[i] = (y[i] - f) / ey[i]
-  
+
 proc fit*[T](userFunc: FuncProto[T],
              pS: openArray[T],
              x, y, ey: openArray[T],
-             bounds: seq[mp_par] = @[]): (seq[T], mp_result) =
+             bounds: seq[tuple[l, u: float]] = @[]): (seq[T], mp_result) =
   ## The actual `fit` procedure, which needs to be called by the user.
+  # convert bounds to mp_par objects
   var
     # create a VarStruct to hold the user data and custom function
     vars = VarStruct[float](x: @x, y: @y, ey: @ey, f: userFunc)
@@ -106,24 +107,32 @@ proc fit*[T](userFunc: FuncProto[T],
     n = pS.len.cint
     perror = newSeq[float](n)
     # variables for the bounds seq
-    mbounds = bounds
+    mbounds: seq[mp_par]
     mboundsPtr: ptr mp_par = nil
   if bounds.len > 0:
+    doAssert bounds.len == 0 or bounds.len == pS.len, "Bounds must either be " &
+      "empty or one bound tuple for each parameter!"
+    for tup in bounds:
+      let (l, u) = tup
+      let b = mp_par(fixed: 0,
+                     limited: [1.cint, 1],
+                     limits: [l.cdouble, u.cdouble])
+      mbounds.add b
     # in case bounds is non empty, use the address of that seq. Else we keep it
     # as nil
-    doAssert bounds.len == n, "There needs to be one `mp_par` object for each parameter!"
+    #doAssert bounds.len == n, "There needs to be one `mp_par` object for each parameter!"
     mboundsPtr = mbounds[0].addr
 
   res.xerror = perror[0].addr
   # cast the `funcImpl` function, which wraps the user function to the needed type
   # for the C lib
   var f = cast[mp_func](funcImpl)
-  
+
   let status = mpfit(f, m, n, p[0].addr, mboundsPtr, nil, cast[pointer](addr(vars)), addr(res))
   echo &"*** testlinfit status = {status}"
   result = (p, res)
 
-  
+
 # the following define a few tests, taken from the tests of the C library
 func ffunc[T](p: seq[T], x: T): T =
   result = p[0] + p[1] * x
@@ -149,11 +158,11 @@ proc testlinfit() =
   #let status = mpfit(f, 10.cint, 2.cint, p[0].addr, nil, nil, cast[pointer](addr(vars)), addr(res))
 
   let (pRes, res) = fit[float](ffunc, p, x, y, ey)
-  
+
   echoResult(pRes, pactual, res)
 
 proc testquadfit() =
-  let 
+  let
     x = @[-1.7237128E+00,1.8712276E+00,-9.6608055E-01,
            -2.8394297E-01,1.3416969E+00,1.3757038E+00,
            -1.3703436E+00,4.2581975E-02,-1.4970151E-01,
@@ -174,7 +183,7 @@ proc testquadfix() =
 
 proc testgaussfit() =
   discard
-  
+
 proc testgaussfix() =
   discard
 
