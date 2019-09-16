@@ -183,7 +183,7 @@ const
 ##  External function prototype declarations
 
 proc mpfit*(funct: mp_func; m: cint; npar: cint; xall: ptr cdouble; pars: ptr mp_par;
-           config: ptr mp_config; private_data: pointer; result: ptr mp_result): cint {.
+            config: ptr mp_config; private_data: pointer; result: ptr mp_result): cint {.
     cdecl, importc: "mpfit", dynlib: "libmpfit.so".}
 ##  C99 uses isfinite() instead of finite()
 
