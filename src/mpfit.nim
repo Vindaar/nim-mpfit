@@ -42,10 +42,21 @@ func chiSq*(res: mp_result): float =
 
 func reducedChiSq*(res: mp_result): float =
   ## given an `mp_result`, return the reduced chi^2 of the fit, i.e.
-  ## reducedChisq = chi^2 / d.o.f. = chi^2 / (# data points - # parameters)
+  ##
+  ## .. code-block:: sh
+  ##    reducedChiSq = \chi^2 / d.o.f
+  ##                 = \chi^2 / (# data points - # parameters)
   result = res.chisq / (res.nfunc - res.nfree).float
 
 proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_result) =
+  ## A convenience proc to echo the fit parameters and their errors as well
+  ## as the properties of the fit, e.g. chi^2 etc.
+  ##
+  ## The first argument `x` are the final resulting fit paramters (the first
+  ## return value of `fit`, `xact` are the actual values (e.g.. your possibly
+  ## known parameters you want to compare with in case the fit was only a
+  ## cross check) and `res` is the `mp_result` object, the second return value of
+  ## the `fit` proc.
   let errs = res.error
   let chisq_red = res.reducedChisq
   echo &"  CHI-SQUARE     = {res.chiSq}    ({res.nfunc - res.nfree} DOF)"
@@ -97,6 +108,11 @@ proc fit*[T](userFunc: FuncProto[T],
              x, y, ey: openArray[T],
              bounds: seq[tuple[l, u: float]] = @[]): (seq[T], mp_result) =
   ## The actual `fit` procedure, which needs to be called by the user.
+  ## `userFunc` is the function to be fitted to the data `x`, `y` and `ey`,
+  ## where `ey` is the error on `y`.
+  ##
+  ## It's possible to set bounds on the fit parameters, by handing a
+  ## seq (one element per parameter) of lower `l` and upper `u` bound values.
   # convert bounds to mp_par objects
   var
     # create a VarStruct to hold the user data and custom function
