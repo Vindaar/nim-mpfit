@@ -68,4 +68,5 @@ where ``ff`` is the user function and ``pCall`` the parameters as a
 ``seq[float]`` (since they have to be handed as a ``ptr cdouble`` we
 have to convert to ``seq[float]`` first).
 
-For an example see the `file:../README.org <../README.org>`__.
+For an example see the
+https://github.com/Vindaar/nim-mpfit/blob/master/README.org.
