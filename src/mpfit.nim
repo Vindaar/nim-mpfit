@@ -2,6 +2,8 @@
 # Copyright Sebastian Schmidt
 # Wrapper for the cMPFIT non-linear least squares fitting library (Levenberg-Marquardt)
 
+## .. include:: ./docs/mpfit.rst
+
 import strformat
 import sequtils
 import mpfit/mpfit_wrapper
@@ -9,7 +11,7 @@ export mpfit_wrapper
 import macros
 
 type
-  FuncProto[T] = proc (p: seq[T], x: T): T
+  FuncProto*[T] = proc (p: seq[T], x: T): T
   VarStruct[T] = ref object
     x: seq[T]
     y: seq[T]

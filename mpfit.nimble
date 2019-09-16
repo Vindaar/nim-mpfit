@@ -21,22 +21,24 @@ proc basename(f: string): string =
   let (dir, name, ext) = f.splitFile
   result = name
 
+proc removePrefix(f, prefix: string): string =
+  result = f
+  result.removePrefix(prefix)
+
 # doc generation inspired by `strfmt`
 task docs, "Generate HTML docs using the Org file":
   # https://github.com/jgm/pandoc/issues/4749
   exec "pandoc " & orgFile & " -o " & rstFile
-  for filePath in listFiles("src"):
-    if filePath.endsWith(".nim"):
-      let outfile = "-o:docs/index.html"
-      echo outfile
-      echo filepath
-      exec &"nim doc {outfile} {filePath}"
-  for filePath in listFiles("src" / pkgName):
-    if filePath.endsWith(".nim"):
-      let outfile = &"-o:docs/{filePath.basename}.html"
-      echo outfile
-      echo filepath
-      exec &"nim doc {outfile} {filePath}"
-
+  var files: seq[string]
+  template walk(path: string, outf: untyped): untyped {.dirty.} =
+    for filePath in listFiles(path):
+      if filePath.endsWith(".nim"):
+        let outfile = outf
+        exec &"nim doc {outfile} {filePath}"
+        files.add outfile.removePrefix("-o:")
+  walk("src", "-o:index.html")
+  walk("src" / pkgName, &"-o:{filePath.basename}.html")
   mvFile rstFile, rstFileAuto
-  #mvFile htmlFileNimDoc, htmlFileIndex
+  for f in files:
+    let fname = f.basename & ".html"
+    mvFile fname, "docs/" & $fname
