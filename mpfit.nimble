@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.0"
+version       = "0.1.1"
 author        = "Sebastian Schmidt"
 description   = "Wrapper for the cMPFIT non-linear least squares fitting library (Levenberg-Marquardt)"
 license       = "MIT"
