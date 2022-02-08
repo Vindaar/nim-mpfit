@@ -76,9 +76,9 @@ proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_resu
       echo &"  P[{i}] = {x[i]} +/- {errs[i]}"
 
 func funcImpl(m, n: cint,
-             pPtr, dyPtr: ptr cdouble,
-             dvecPtr: ptr ptr cdouble,
-             vars: var pointer): cint {.cdecl.} =
+              pPtr, dyPtr: ptr cdouble,
+              dvecPtr: ptr ptr cdouble,
+              vars: var pointer): cint {.cdecl.} =
   ## this function contains the actual code, which is called by the C MPFIT
   ## library. The `vars` argument contains the user data as well as the u
   ## user defined fit function. This function only exists to accomodate
