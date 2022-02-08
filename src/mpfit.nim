@@ -97,13 +97,13 @@ func funcImpl(m, n: cint,
     ff = v.f
     f: float
     # create a sequence for the parameters for the user defined proc
-    pCall = newSeq[cdouble](n)
+    pCall = newSeq[float](n)
 
   for i in 0 ..< n:
-    pCall[i] = p[i]
+    pCall[i] = p[i].float
   for i in 0 ..< m:
     f = ff(pCall, x[i])
-    dy[i] = (y[i] - f) / ey[i]
+    dy[i] = ((y[i] - f) / ey[i]).cdouble
 
 proc fit*[T](userFunc: FuncProto[T],
              pS: openArray[T],
