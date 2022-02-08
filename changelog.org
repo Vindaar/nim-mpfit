@@ -1,0 +1,4 @@
+* v0.1.2
+- allow to change configuration of =mpfit= calls via a custom
+  =MpConfig= object
+- fix type conversions to make code compile on ARC  
