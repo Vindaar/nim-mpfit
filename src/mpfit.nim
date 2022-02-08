@@ -6,6 +6,7 @@
 
 import strformat
 import sequtils
+import options
 import mpfit/mpfit_wrapper
 export mpfit_wrapper
 import macros
@@ -17,6 +18,33 @@ type
     y: seq[T]
     ey: seq[T]
     f: FuncProto[T]
+
+  MpConfig* = object
+    ftol*: float ##  NOTE: the user may set the value explicitly; OR, if the passed
+                 ##      value is zero, then the "Default" value will be substituted by
+                 ##      mpfit().
+    ##  Relative chi-square convergence criterium Default: 1e-10
+    xtol*: float             ##  Relative parameter convergence criterium  Default: 1e-10
+    gtol*: float             ##  Orthogonality convergence criterium       Default: 1e-10
+    epsfcn*: float           ##  Finite derivative step size               Default: MP_MACHEP0
+    stepFactor*: float       ##  Initial step bound                     Default: 100.0
+    covtol*: float           ##  Range tolerance for covariance calculation Default: 1e-14
+    maxiter*: int ##  Maximum number of iterations.  If maxiter == MP_NO_ITER,
+                 ##                      then basic error checking is done, and parameter
+                 ##                      errors/covariances are estimated based on input
+                 ##                      parameter values, but no fitting iterations are done.
+                 ## 		     Default: 200
+                 ##
+    maxfev*: int ##  Maximum number of function evaluations, or 0 for no limit
+                ## 		     Default: 0 (no limit)
+    nprint*: int              ##  Default: 1
+    doUserScale*: bool         ##  Scale variables by user values?
+                     ## 		     1 = yes, user scale values in diag;
+                     ## 		     0 = no, variables scaled internally (Default)
+    noFiniteCheck*: bool       ##  Disable check for infinite quantities from user?
+                       ## 			0 = do not perform check (Default)
+                       ## 			1 = perform check
+                       ##
 
 
 proc `$`(v: VarStruct): string = $v[]
@@ -105,10 +133,24 @@ func funcImpl(m, n: cint,
     f = ff(pCall, x[i])
     dy[i] = ((y[i] - f) / ey[i]).cdouble
 
+proc toMpConfigStruct(mpConfig: MpConfig): mp_config_struct =
+  result.ftol = mpConfig.ftol.cdouble
+  result.xtol = mpConfig.xtol.cdouble
+  result.gtol = mpConfig.gtol.cdouble
+  result.epsfcn = mpConfig.epsfcn.cdouble
+  result.stepFactor = mpConfig.stepFactor.cdouble
+  result.covtol = mpConfig.covtol.cdouble
+  result.maxiter = mpConfig.maxiter.cint
+  result.maxfev = mpConfig.maxfev.cint
+  result.nprint = mpConfig.nprint.cint
+  result.doUserScale = if mpConfig.doUserScale: 1.cint else: 0.cint
+  result.noFiniteCheck = if mpConfig.noFiniteCheck: 1.cint else: 0.cint
+
 proc fit*[T](userFunc: FuncProto[T],
              pS: openArray[T],
              x, y, ey: openArray[T],
-             bounds: seq[tuple[l, u: float]] = @[]): (seq[T], mp_result) =
+             bounds: seq[tuple[l, u: float]] = @[],
+             config = none[MpConfig]()): (seq[T], mp_result) =
   ## The actual `fit` procedure, which needs to be called by the user.
   ## `userFunc` is the function to be fitted to the data `x`, `y` and `ey`,
   ## where `ey` is the error on `y`.
@@ -136,6 +178,7 @@ proc fit*[T](userFunc: FuncProto[T],
                      limited: [1.cint, 1],
                      limits: [l.cdouble, u.cdouble])
       mbounds.add b
+
     # in case bounds is non empty, use the address of that seq. Else we keep it
     # as nil
     #doAssert bounds.len == n, "There needs to be one `mp_par` object for each parameter!"
@@ -146,7 +189,11 @@ proc fit*[T](userFunc: FuncProto[T],
   # for the C lib
   var f = cast[mp_func](funcImpl)
 
-  let status = mpfit(f, m, n, p[0].addr, mboundsPtr, nil, cast[pointer](addr(vars)), addr(res))
+  var mpCfg = if config.isSome: toMpConfigStruct(config.unsafeGet)
+              else: toMpConfigStruct(MpConfig())
+  var mpCfgPtr = if config.isSome: mpCfg.addr
+                 else: nil
+  let status = mpfit(f, m, n, p[0].addr, mboundsPtr, mpCfgPtr, cast[pointer](addr(vars)), addr(res))
   echo &"*** testlinfit status = {status}"
   result = (p, res)
 
