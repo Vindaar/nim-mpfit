@@ -83,7 +83,7 @@ func formatValue*(f: float, precision: int): string =
   result.trimZeros()
 
 proc pretty*(x: openArray[float], res: mp_result, xact: openArray[float] = @[],
-             unicode = false, precision = -1, prefix = "  "): string =
+             unicode = true, precision = -1, prefix = "  "): string =
   ## A convenience proc to echo the fit parameters and their errors as well
   ## as the properties of the fit, e.g. chi^2 etc.
   ##
