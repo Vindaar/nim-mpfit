@@ -259,7 +259,7 @@ proc testlinfit() =
 
   let (pRes, res) = fit[float](ffunc, p, x, y, ey)
 
-  echoResult(pRes, pactual, res)
+  echoResult(pRes, res, pactual)
 
 proc testquadfit() =
   let
@@ -275,7 +275,7 @@ proc testquadfit() =
     p = @[1.0, 1.0, 1.0]
     pactual = @[4.7, 0.0, 6.2]
   let (pRes, res) = fit[float](fsquare, p, x, y, ey)
-  echoResult(pRes, pactual, res)
+  echoResult(pRes, res, pactual)
 
 
 proc testquadfix() =
