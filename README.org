@@ -14,29 +14,27 @@ the actual code related to mpfit-nim is only the definition of =proc
 expH(...)= and =proc fitHalfLife(...)=.  
 
 In addition an =echoResult= proc is defined, which can be used to
-pretty print the result of the fit.
-TODO: provide nicer access to the errors of the fit parameters and the
-chi^2 value.
+pretty print the result of the fit. Alternatively, you can call
+=pretty= taking the final parameters and the =mp_result= (i.e. the
+tuple returned by =fit= as separate arguments) to get a string
+representation of it.
 
-#+BEGIN_SRC nim
-import strutils
-import seqmath
-import sequtils
-import strformat
-import plotly
-import ../src/mpfit
-import zero_functional
-import chroma
+Note: we use the =mpfit/plotting= submodule here to generate a plot in
+one line. It depends on [[https://github.com/Vindaar/ggplotnim][ggplotnim]].
+
+#+BEGIN_SRC nim :tangle examples/fit_half_life.nim
+import std / [strutils, sequtils, strformat]
+import pkg / [zero_functional, seqmath]
+import mpfit
 
 const
-  n = 1000
   filename = "data/half_life_muon.txt"
 
 func expH(p: seq[float], x: float): float =
   ## the function we'd like to fit. Any user defined function needs to
   ## be of the signature
-  ## proc[T](p: seq[T], x: T): T
-  ## i.e. conform to the FuncProto[T] type defined in mpfit_nim
+  ## `proc[T](p: seq[T], x: T): T`
+  ## i.e. conform to the `FuncProto[T]` type defined in mpfit_nim
   result = p[0] * exp(-p[1] * x)
   
 proc parseHalfLifeData(filename: string): (seq[float], seq[float]) =
@@ -60,24 +58,6 @@ proc fitHalfLife(bins, counts, countsErr: seq[float]): (seq[float], mp_result) =
   echoResult(pRes, res = res)
   result = (pRes, res)
   echo &"The lifetime of the muon is ~ {1.0 / pRes[1]:.2f} µs"
-                                            
-proc plot(bins, counts, countsErr, xFit, yFit: seq[float]) =
-  ## plot the data using plotly. The first plot is an ErrorBar plot
-  ## the second a lines plot
-  
-  let d = Trace[float](mode: PlotMode.Markers, `type`: PlotType.ScatterGL,
-                       xs: bins, ys: counts, name: "Muon lifetime measurement")
-  d.marker = Marker[float](size: @[3.0])
-  # add error bars for counts
-  d.ys_err = newErrorBar(countsErr, color = Color(r: 0.5, g: 0.5, b: 0.5, a: 1.0))
-
-  let dFit = Trace[float](mode: PlotMode.Lines, `type`: PlotType.ScatterGL,
-                         xs: xFit, ys: yFit, name: "Fit to lifetime data")
-  
-  let layout = Layout(title: "Muon half life measurement", width: 1200, height: 800,
-                      xaxis: Axis(title: "time / µs"),
-                      yaxis: Axis(title: "# counts"), autosize: false)
-  Plot[float](layout: layout, traces: @[d, dFit]).show()
 
 when isMainModule:
   # first parse the data from the file
@@ -87,33 +67,35 @@ when isMainModule:
   # perform the fit and echo results
   let (pRes, res) = fitHalfLife(bins, counts, countsErr)
 
-  # calculate some datapoints for the plot of the fit
-  let
-    xFit = linspace(0, 10, 1000)
-    # call fitted function for each value with final parameters
-    yFit = xFit.mapIt(expH(pRes, it))
-
   # plot the data and the fit
-  plot(bins, counts, countsErr, xFit, yFit)
+  import mpfit / plotting # import plotting convenience function
+  plot(
+    expH, pRes, # the function we fit and resulting fit params
+    bins, counts, countsErr, # the input data & errors
+    res, # the `mp_result` returned from the `fit` call
+    xMin = 0.0, xMax = 10.0, # customize range of plot
+    xlabel = "time / μs", ylabel = "# counts", title = "Muon half life measurement", # and labels
+    outfile = "../media/muon_lifetime_measurement.png", # save as png
+    verbose = false # we set `verbose` to false, as we already `echoResult` manually
+  )
 #+END_SRC
 
 which outputs the following:
 #+BEGIN_SRC sh
- *** testlinfit status = 1
-  CHI-SQUARE     = 74.07991136435545    (8 DOF)
-  CHI_SQUARE/dof = 9.259988920544432
-        NPAR     = 2
-       NFREE     = 2
-     NPEGGED     = 0
-     NITER       = 11
-      NFEV       = 33
-  P[0] = 1937.0984494501 +/- 45.63271325094058
-  P[1] = 0.5155077785010372 +/- 0.008761055877357529
+  χ²      = 74.0799    (8 DOF)
+  χ²/dof  = 9.25999
+  NPAR    = 2
+  NFREE   = 2
+  NPEGGED = 0
+  NITER   = 11
+  NFEV    = 33
+  P[0] = 1937.1   +/- 45.6327
+  P[1] = 0.515508 +/- 0.00876106
 The lifetime of the muon is ~ 1.94 µs
 #+END_SRC
 
 and creates this plot:
-[[file:media/muon_lifetime_measurement.jpg]]
+[[file:media/muon_lifetime_measurement.png]]
 
 ** Dependencies & Installation
 

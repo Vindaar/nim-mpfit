@@ -1,14 +1,8 @@
-import strutils
-import seqmath
-import sequtils
-import strformat
-import plotly
-import ../src/mpfit
-import zero_functional
-import chroma
+import std / [strutils, sequtils, strformat]
+import pkg / [zero_functional, seqmath]
+import mpfit
 
 const
-  n = 1000
   filename = "data/half_life_muon.txt"
 
 func expH(p: seq[float], x: float): float =
@@ -39,24 +33,6 @@ proc fitHalfLife(bins, counts, countsErr: seq[float]): (seq[float], mp_result) =
   echoResult(pRes, res = res)
   result = (pRes, res)
   echo &"The lifetime of the muon is ~ {1.0 / pRes[1]:.2f} µs"
-                                            
-proc plot(bins, counts, countsErr, xFit, yFit: seq[float]) =
-  ## plot the data using plotly. The first plot is an ErrorBar plot
-  ## the second a lines plot
-  
-  let d = Trace[float](mode: PlotMode.Markers, `type`: PlotType.ScatterGL,
-                       xs: bins, ys: counts, name: "Muon lifetime measurement")
-  d.marker = Marker[float](size: @[3.0])
-  # add error bars for counts
-  d.ys_err = newErrorBar(countsErr, color = Color(r: 0.5, g: 0.5, b: 0.5, a: 1.0))
-
-  let dFit = Trace[float](mode: PlotMode.Lines, `type`: PlotType.ScatterGL,
-                         xs: xFit, ys: yFit, name: "Fit to lifetime data")
-  
-  let layout = Layout(title: "Muon half life measurement", width: 1200, height: 800,
-                      xaxis: Axis(title: "time / µs"),
-                      yaxis: Axis(title: "# counts"), autosize: false)
-  Plot[float](layout: layout, traces: @[d, dFit]).show()
 
 when isMainModule:
   # first parse the data from the file
@@ -66,14 +42,13 @@ when isMainModule:
   # perform the fit and echo results
   let (pRes, res) = fitHalfLife(bins, counts, countsErr)
 
-  # calculate some datapoints for the plot of the fit
-  let
-    xFit = linspace(0, 10, 1000)
-    # call fitted function for each value with final parameters
-    yFit = xFit.mapIt(expH(pRes, it))
-
   # plot the data and the fit
-  plot(bins, counts, countsErr, xFit, yFit)
-  
-
-
+  import mpfit / plotting # import plotting convenience function
+  plot(
+    expH, pRes, # the function we fit and resulting fit params
+    bins, counts, countsErr, # the input data & errors
+    res, # the `mp_result` returned from the `fit` call
+    xMin = 0.0, xMax = 10.0, # customize range of plot
+    xlabel = "time / μs", ylabel = "# counts", title = "Muon half life measurement", # and labels
+    outfile = "../media/muon_lifetime_measurement.png", # save as png
+    verbose = false) # we set `verbose` to false, as we already `echoResult` manually
