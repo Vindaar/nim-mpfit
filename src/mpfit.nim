@@ -17,32 +17,30 @@ type
     f: FuncProto[T]
 
   MpConfig* = object
-    ftol*: float ##  NOTE: the user may set the value explicitly; OR, if the passed
-                 ##      value is zero, then the "Default" value will be substituted by
-                 ##      mpfit().
-    ##  Relative chi-square convergence criterium Default: 1e-10
-    xtol*: float             ##  Relative parameter convergence criterium  Default: 1e-10
-    gtol*: float             ##  Orthogonality convergence criterium       Default: 1e-10
-    epsfcn*: float           ##  Finite derivative step size               Default: MP_MACHEP0
-    stepFactor*: float       ##  Initial step bound                     Default: 100.0
-    covtol*: float           ##  Range tolerance for covariance calculation Default: 1e-14
-    maxiter*: int ##  Maximum number of iterations.  If maxiter == MP_NO_ITER,
-                 ##                      then basic error checking is done, and parameter
-                 ##                      errors/covariances are estimated based on input
-                 ##                      parameter values, but no fitting iterations are done.
-                 ## 		     Default: 200
-                 ##
-    maxfev*: int ##  Maximum number of function evaluations, or 0 for no limit
-                ## 		     Default: 0 (no limit)
-    nprint*: int              ##  Default: 1
-    doUserScale*: bool         ##  Scale variables by user values?
-                     ## 		     1 = yes, user scale values in diag;
-                     ## 		     0 = no, variables scaled internally (Default)
-    noFiniteCheck*: bool       ##  Disable check for infinite quantities from user?
-                       ## 			0 = do not perform check (Default)
-                       ## 			1 = perform check
-                       ##
-
+    ftol*: float         ##  NOTE: the user may set the value explicitly; OR, if the passed
+                         ##      value is zero, then the "Default" value will be substituted by
+                         ##      mpfit().
+                         ##  Relative chi-square convergence criterium  Default: 1e-10
+    xtol*: float         ##  Relative parameter convergence criterium   Default: 1e-10
+    gtol*: float         ##  Orthogonality convergence criterium        Default: 1e-10
+    epsfcn*: float       ##  Finite derivative step size                Default: MP_MACHEP0
+    stepFactor*: float   ##  Initial step bound                         Default: 100.0
+    covtol*: float       ##  Range tolerance for covariance calculation Default: 1e-14
+    maxiter*: int        ##  Maximum number of iterations.  If maxiter == MP_NO_ITER,
+                         ##    then basic error checking is done, and parameter
+                         ##    errors/covariances are estimated based on input
+                         ##    parameter values, but no fitting iterations are done.
+                         ##                                             Default: 200
+                         ##
+    maxfev*: int         ##  Maximum number of function evaluations, or 0 for no limit
+                         ##                                             Default: 0 (no limit)
+    nprint*: int         ##                                             Default: 1
+    doUserScale*: bool   ##  Scale variables by user values?
+                         ## 		     1 = yes, user scale values in diag;
+                         ## 		     0 = no, variables scaled internally (Default)
+    noFiniteCheck*: bool ##  Disable check for infinite quantities from user?
+                         ## 			0 = do not perform check (Default)
+                         ## 			1 = perform check
 
 proc `$`(v: VarStruct): string = $v[]
 
