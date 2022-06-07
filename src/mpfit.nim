@@ -4,7 +4,7 @@
 
 ## .. include:: ./docs/mpfit.rst
 
-import std / [strformat, strutils, sequtils, options]
+import std / [strformat, strutils, sequtils, options, algorithm]
 import mpfit/mpfit_wrapper
 export mpfit_wrapper
 
@@ -73,7 +73,17 @@ func reducedChiSq*(res: mp_result): float =
   ##                 = \chi^2 / (# data points - # parameters)
   result = res.chisq / (res.nfunc - res.nfree).float
 
-proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_result) =
+func formatValue*(f: float, precision: int): string =
+  if abs(f) >= 1e5 or abs(f) <= 1e-5:
+    result = f.formatBiggestFloat(format = ffScientific,
+                                  precision = precision)
+  else:
+    result = f.formatBiggestFloat(format = ffDefault,
+                                  precision = precision)
+  result.trimZeros()
+
+proc pretty*(x: openArray[float], res: mp_result, xact: openArray[float] = @[],
+             unicode = false, precision = -1, format = ffDefault, prefix = "  "): string =
   ## A convenience proc to echo the fit parameters and their errors as well
   ## as the properties of the fit, e.g. chi^2 etc.
   ##
@@ -84,19 +94,48 @@ proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_resu
   ## the `fit` proc.
   let errs = res.error
   let chisq_red = res.reducedChisq
-  echo &"  CHI-SQUARE     = {res.chiSq}    ({res.nfunc - res.nfree} DOF)"
-  echo &"  CHI_SQUARE/dof = {chisq_red}"
-  echo &"        NPAR     = {res.npar}"
-  echo &"       NFREE     = {res.nfree}"
-  echo &"     NPEGGED     = {res.npegged}"
-  echo &"     NITER       = {res.niter}"
-  echo &"      NFEV       = {res.nfev}"
-  if xact.len != 0:
-    for i in 0 ..< res.npar:
-      echo &"  P[{i}] = {x[i]} +/- {errs[i]}     (ACTUAL {xact[i]})"
+  let chiSqStr = formatValue(res.chiSq, precision = precision)
+  let chiSqRedStr = formatValue(chiSq_red, precision = precision)
+  if unicode: # duplicate just for clarity of alignment
+    result.add &"{prefix}χ²      = {chiSqStr}    ({res.nfunc - res.nfree} DOF)\n"
+    result.add &"{prefix}χ²/dof  = {chiSqRedStr}\n"
+    result.add &"{prefix}NPAR    = {res.npar}\n"
+    result.add &"{prefix}NFREE   = {res.nfree}\n"
+    result.add &"{prefix}NPEGGED = {res.npegged}\n"
+    result.add &"{prefix}NITER   = {res.niter}\n"
+    result.add &"{prefix}NFEV    = {res.nfev}\n"
   else:
-    for i in 0 ..< res.npar:
-      echo &"  P[{i}] = {x[i]} +/- {errs[i]}"
+    result.add &"{prefix}CHI-SQUARE     = {chiSqStr}    ({res.nfunc - res.nfree} DOF)\n"
+    result.add &"{prefix}CHI_SQUARE/dof = {chiSqRedStr}\n"
+    result.add &"{prefix}NPAR           = {res.npar}\n"
+    result.add &"{prefix}NFREE          = {res.nfree}\n"
+    result.add &"{prefix}NPEGGED        = {res.npegged}\n"
+    result.add &"{prefix}NITER          = {res.niter}\n"
+    result.add &"{prefix}NFEV           = {res.nfev}\n"
+
+  let xStrs = x.mapIt(formatValue(it, precision = precision))
+  let errStrs = errs.mapIt(formatValue(it, precision = precision))
+  let longest = xStrs.mapIt(it.len).sorted[^1]
+  for i in 0 ..< res.npar:
+    let xStr = xStrs[i].alignLeft(longest)
+    if xact.len != 0:
+      let actStr = formatValue(xact[i], precision = precision)
+      result.add &"{prefix}P[{i}] = {xStr} +/- {errStrs[i]}     (ACTUAL {actStr})"
+    else:
+      result.add &"{prefix}P[{i}] = {xStr} +/- {errStrs[i]}"
+    if i < res.npar - 1:
+      result.add "\n"
+
+proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_result) =
+  ## A convenience proc to echo the fit parameters and their errors as well
+  ## as the properties of the fit, e.g. chi^2 etc.
+  ##
+  ## The first argument `x` are the final resulting fit paramters (the first
+  ## return value of `fit`, `xact` are the actual values (e.g.. your possibly
+  ## known parameters you want to compare with in case the fit was only a
+  ## cross check) and `res` is the `mp_result` object, the second return value of
+  ## the `fit` proc.
+  echo pretty(x, res, xact = xact)
 
 func funcImpl(m, n: cint,
               pPtr, dyPtr: ptr cdouble,
