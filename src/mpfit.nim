@@ -126,7 +126,8 @@ proc pretty*(x: openArray[float], res: mp_result, xact: openArray[float] = @[],
     if i < res.npar - 1:
       result.add "\n"
 
-proc echoResult*(x: openArray[float], xact: openArray[float] = @[], res: mp_result) =
+proc echoResult*(x: openArray[float], res: mp_result,
+                 xact: openArray[float] = @[]) =
   ## A convenience proc to echo the fit parameters and their errors as well
   ## as the properties of the fit, e.g. chi^2 etc.
   ##
