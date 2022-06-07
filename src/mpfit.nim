@@ -4,12 +4,9 @@
 
 ## .. include:: ./docs/mpfit.rst
 
-import strformat
-import sequtils
-import options
+import std / [strformat, strutils, sequtils, options]
 import mpfit/mpfit_wrapper
 export mpfit_wrapper
-import macros
 
 type
   FuncProto*[T] = proc (p: seq[T], x: T): T
