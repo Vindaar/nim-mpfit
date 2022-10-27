@@ -1,3 +1,6 @@
+* v0.2.0
+- fixes a nasty bug of the error buffer escaping its scope and causing
+  undefined behavior, possibly segfaults 
 * v0.1.3
 - *BREAKING*: change =echoResult= argument order to take =mp_result=
   as second argument instead of third and =xact= as third. Better
