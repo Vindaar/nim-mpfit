@@ -233,67 +233,67 @@ proc fit*[T](userFunc: FuncProto[T],
   result = (p, res)
 
 
-# the following define a few tests, taken from the tests of the C library
-func ffunc[T](p: seq[T], x: T): T =
-  result = p[0] + p[1] * x
+when isMainModule:
+  # the following define a few tests, taken from the tests of the C library
+  func ffunc[T](p: seq[T], x: T): T =
+    result = p[0] + p[1] * x
 
-func fsquare[T](p: seq[T], x: T): T =
-  result =  p[0] + p[1] * x + p[2] * x * x
+  func fsquare[T](p: seq[T], x: T): T =
+    result =  p[0] + p[1] * x + p[2] * x * x
 
-proc testlinfit() =
-  let
-    x = @[-1.7237128E+00,1.8712276E+00,-9.6608055E-01,
-         -2.8394297E-01,1.3416969E+00,1.3757038E+00,
-         -1.3703436E+00,4.2581975E-02,-1.4970151E-01,
-          8.2065094E-01]
-    y = @[1.9000429E-01,6.5807428E+00,1.4582725E+00,
-         2.7270851E+00,5.5969253E+00,5.6249280E+00,
-         0.787615,3.2599759E+00,2.9771762E+00,
-         4.5936475E+00]
-    ey = @[0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07]
-    p = @[1.0, 1.0]
-    pactual = [3.20, 1.78]
-  echo x
-
-  #let status = mpfit(f, 10.cint, 2.cint, p[0].addr, nil, nil, cast[pointer](addr(vars)), addr(res))
-
-  let (pRes, res) = fit[float](ffunc, p, x, y, ey)
-
-  echoResult(pRes, res, pactual)
-
-proc testquadfit() =
-  let
-    x = @[-1.7237128E+00,1.8712276E+00,-9.6608055E-01,
+  proc testlinfit() =
+    let
+      x = @[-1.7237128E+00,1.8712276E+00,-9.6608055E-01,
            -2.8394297E-01,1.3416969E+00,1.3757038E+00,
            -1.3703436E+00,4.2581975E-02,-1.4970151E-01,
-           8.2065094E-01]
-    y = @[2.3095947E+01,2.6449392E+01,1.0204468E+01,
-           5.40507,1.5787588E+01,1.6520903E+01,
-           1.5971818E+01,4.7668524E+00,4.9337711E+00,
-           8.7348375E+00]
-    ey = newSeqWith[float](10, 0.2)
-    p = @[1.0, 1.0, 1.0]
-    pactual = @[4.7, 0.0, 6.2]
-  let (pRes, res) = fit[float](fsquare, p, x, y, ey)
-  echoResult(pRes, res, pactual)
+            8.2065094E-01]
+      y = @[1.9000429E-01,6.5807428E+00,1.4582725E+00,
+           2.7270851E+00,5.5969253E+00,5.6249280E+00,
+           0.787615,3.2599759E+00,2.9771762E+00,
+           4.5936475E+00]
+      ey = @[0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07, 0.07]
+      p = @[1.0, 1.0]
+      pactual = [3.20, 1.78]
+    echo x
+
+    #let status = mpfit(f, 10.cint, 2.cint, p[0].addr, nil, nil, cast[pointer](addr(vars)), addr(res))
+
+    let (pRes, res) = fit[float](ffunc, p, x, y, ey)
+
+    echoResult(pRes, res, pactual)
+
+  proc testquadfit() =
+    let
+      x = @[-1.7237128E+00,1.8712276E+00,-9.6608055E-01,
+             -2.8394297E-01,1.3416969E+00,1.3757038E+00,
+             -1.3703436E+00,4.2581975E-02,-1.4970151E-01,
+             8.2065094E-01]
+      y = @[2.3095947E+01,2.6449392E+01,1.0204468E+01,
+             5.40507,1.5787588E+01,1.6520903E+01,
+             1.5971818E+01,4.7668524E+00,4.9337711E+00,
+             8.7348375E+00]
+      ey = newSeqWith[float](10, 0.2)
+      p = @[1.0, 1.0, 1.0]
+      pactual = @[4.7, 0.0, 6.2]
+    let (pRes, res) = fit[float](fsquare, p, x, y, ey)
+    echoResult(pRes, res, pactual)
 
 
-proc testquadfix() =
-  discard
+  proc testquadfix() =
+    discard
 
-proc testgaussfit() =
-  discard
+  proc testgaussfit() =
+    discard
 
-proc testgaussfix() =
-  discard
+  proc testgaussfix() =
+    discard
 
-proc main() =
+  proc main() =
 
-  testlinfit()
-  testquadfit()
-  testquadfix()
-  testgaussfit()
-  testgaussfix()
+    testlinfit()
+    testquadfit()
+    testquadfix()
+    testgaussfit()
+    testgaussfix()
 
-when isMainModule:
   main()
