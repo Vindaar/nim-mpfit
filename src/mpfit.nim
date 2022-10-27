@@ -86,10 +86,10 @@ func cov*(res: mp_result): seq[seq[float]] =
 func residuals*(res: mp_result): seq[float] =
   ## given an `mp_result`, return the final residuals, if any
   if res.resId.isNil: return
-  result.resid = newSeq[float](res.nfunc.int)
+  result = newSeq[float](res.nfunc.int)
   let buf = cast[ptr UncheckedArray[cdouble]](res.resid)
-  for i in 0 ..< result.resid.len:
-    result.resid[i] = buf[i]
+  for i in 0 ..< result.len:
+    result[i] = buf[i]
 
 func error*(res: MpResult): seq[float] = res.xerror
 func cov*(res: MpResult): seq[seq[float]] = res.covar
