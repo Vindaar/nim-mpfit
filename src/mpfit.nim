@@ -42,10 +42,31 @@ type
                          ## 			0 = do not perform check (Default)
                          ## 			1 = perform check
 
+
+  MpResult* = object
+    bestnorm*: float        ##  Final chi^2
+    orignorm*: float        ##  Starting value of chi^2
+    niter*: int             ##  Number of iterations
+    nfev*: int              ##  Number of function evaluations
+    status*: int            ##  Fitting status code
+    npar*: int              ##  Total number of parameters
+    nfree*: int             ##  Number of free parameters
+    npegged*: int           ##  Number of pegged parameters
+    nfunc*: int             ##  Number of residuals (= num. of data points)
+    resid*: seq[float]      ##  Final residuals
+                            ## 			  nfunc-vector, or 0 if not desired
+    xerror*: seq[float]     ##  Final parameter uncertainties (1-sigma)
+                            ## 			  npar-vector, or 0 if not desired
+    covar*: seq[seq[float]] ##  Final parameter covariance matrix
+                            ## 			  npar x npar array, or 0 if not desired
+    version*: string        ##  MPFIT version string
+
+
 proc `$`(v: VarStruct): string = $v[]
 
 func error*(res: mp_result): seq[float] =
   ## given an `mp_result`, return the errors of the fit parameters
+  if res.xerror.isNil: return
   let errs = cast[ptr UncheckedArray[cdouble]](res.xerror)
   result = newSeq[float](res.npar)
   for i in 0 .. result.high:
@@ -54,6 +75,7 @@ func error*(res: mp_result): seq[float] =
 func cov*(res: mp_result): seq[seq[float]] =
   ## given an `mp_result`, return the covariance matrix of the fit parameters
   ## as a nested seq of shape `[npar, npar]`
+  if res.covar.isNil: return
   let npar = res.npar.int
   let covar = cast[ptr UncheckedArray[cdouble]](res.covar)
   result = newSeqWith(npar, newSeq[float](npar))
@@ -61,17 +83,46 @@ func cov*(res: mp_result): seq[seq[float]] =
     for j in 0 ..< npar:
       result[i][j] = covar[i * npar + j].float
 
-func chiSq*(res: mp_result): float =
+func residuals*(res: mp_result): seq[float] =
+  ## given an `mp_result`, return the final residuals, if any
+  if res.resId.isNil: return
+  result.resid = newSeq[float](res.nfunc.int)
+  let buf = cast[ptr UncheckedArray[cdouble]](res.resid)
+  for i in 0 ..< result.resid.len:
+    result.resid[i] = buf[i]
+
+func error*(res: MpResult): seq[float] = res.xerror
+func cov*(res: MpResult): seq[seq[float]] = res.covar
+func residuals*(res: MpResult): seq[float] = res.resid
+
+func chiSq*[T: MpResult | mp_result](res: T): float =
   ## given an `mp_result`, return the chi^2 of the fit
   result = res.bestnorm.float
 
-func reducedChiSq*(res: mp_result): float =
+func reducedChiSq*[T: MpResult | mp_result](res: T): float =
   ## given an `mp_result`, return the reduced chi^2 of the fit, i.e.
   ##
   ## .. code-block:: sh
   ##    reducedChiSq = \chi^2 / d.o.f
   ##                 = \chi^2 / (# data points - # parameters)
   result = res.chisq / (res.nfunc - res.nfree).float
+
+proc assignResult*(res: mp_result): MpResult =
+  result.bestnorm = res.bestnorm.float
+  result.orignorm = res.orignorm.float
+  result.niter = res.niter.int
+  result.nfev = res.nfev.int
+  result.status = res.status.int
+  result.npar = res.npar.int
+  result.nfree = res.nfree.int
+  result.npegged = res.npegged.int
+  result.nfunc = res.nfunc.int
+  result.resid = res.residuals()
+  result.xerror = res.error()
+  result.covar = res.cov()
+  for c in res.version: # we could just memcpy it or something
+    if c == '\0': break
+    result.version.add $c
 
 func formatValue*(f: float, precision: int): string =
   if abs(f) >= 1e5 or abs(f) <= 1e-5:
@@ -82,8 +133,9 @@ func formatValue*(f: float, precision: int): string =
                                   precision = precision)
   result.trimZeros()
 
-proc pretty*(x: openArray[float], res: mp_result, xact: openArray[float] = @[],
-             unicode = true, precision = -1, prefix = "  "): string =
+proc pretty*[T: MpResult | mp_result](
+  x: openArray[float], res: T, xact: openArray[float] = @[],
+  unicode = true, precision = -1, prefix = "  "): string =
   ## A convenience proc to echo the fit parameters and their errors as well
   ## as the properties of the fit, e.g. chi^2 etc.
   ##
@@ -126,7 +178,7 @@ proc pretty*(x: openArray[float], res: mp_result, xact: openArray[float] = @[],
     if i < res.npar - 1:
       result.add "\n"
 
-proc echoResult*(x: openArray[float], res: mp_result,
+proc echoResult*[T: MpResult | mp_result](x: openArray[float], res: T,
                  xact: openArray[float] = @[]) =
   ## A convenience proc to echo the fit parameters and their errors as well
   ## as the properties of the fit, e.g. chi^2 etc.
@@ -185,7 +237,7 @@ proc fit*[T](userFunc: FuncProto[T],
              pS: openArray[T],
              x, y, ey: openArray[T],
              bounds: seq[tuple[l, u: float]] = @[],
-             config = none[MpConfig]()): (seq[T], mp_result) =
+             config = none[MpConfig]()): (seq[T], MpResult) =
   ## The actual `fit` procedure, which needs to be called by the user.
   ## `userFunc` is the function to be fitted to the data `x`, `y` and `ey`,
   ## where `ey` is the error on `y`.
@@ -219,7 +271,7 @@ proc fit*[T](userFunc: FuncProto[T],
     #doAssert bounds.len == n, "There needs to be one `mp_par` object for each parameter!"
     mboundsPtr = mbounds[0].addr
 
-  res.xerror = perror[0].addr
+  res.xerror = perror[0].addr # local (!) buffer for errors
   # cast the `funcImpl` function, which wraps the user function to the needed type
   # for the C lib
   var f = cast[mp_func](funcImpl)
@@ -230,7 +282,8 @@ proc fit*[T](userFunc: FuncProto[T],
                  else: nil
   let status = mpfit(f, m, n, p[0].addr, mboundsPtr, mpCfgPtr, cast[pointer](addr(vars)), addr(res))
   echo &"*** testlinfit status = {status}"
-  result = (p, res)
+  result = (p, res.assignResult)
+
 
 
 when isMainModule:
