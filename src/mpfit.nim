@@ -281,10 +281,7 @@ proc fit*[T](userFunc: FuncProto[T],
   var mpCfgPtr = if config.isSome: mpCfg.addr
                  else: nil
   let status = mpfit(f, m, n, p[0].addr, mboundsPtr, mpCfgPtr, cast[pointer](addr(vars)), addr(res))
-  echo &"*** testlinfit status = {status}"
   result = (p, res.assignResult)
-
-
 
 when isMainModule:
   # the following define a few tests, taken from the tests of the C library
