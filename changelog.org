@@ -1,3 +1,6 @@
+* v0.2.1
+- remove the default printing of the status code returned by
+  ~mpfit~. Better if users just investigate manually using ~MpResult.status~.
 * v0.2.0
 - fixes a nasty bug of the error buffer escaping its scope and causing
   undefined behavior, possibly segfaults 
